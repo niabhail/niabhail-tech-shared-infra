@@ -1,79 +1,49 @@
-# niabhail-tech-shared-infra
+# Niabhail Tech Shared Infrastructure
 
-Shared infrastructure for the niabhail.tech ecosystem. This project provides the foundational services that other projects depend on, including the Caddy reverse proxy and shared Docker network.
+Shared infrastructure for the niabhail.tech ecosystem. Provides foundational services including Caddy reverse proxy and shared Docker network.
 
-## Architecture
+## Features
 
-This infrastructure follows a clean separation pattern:
-- **niabhail-tech-shared-infra** (this project): Foundation services
-- **niabhail-tech-site**: Portfolio website
-- **n8n-docker**: Automation platform
+- **Automatic HTTPS** with Let's Encrypt certificates
+- **Reverse proxy** routing for multiple services
+- **Shared Docker network** for service communication
+- **Security headers** and compression
+- **Request logging** and health monitoring
 
-No application projects have cross-dependencies - they only depend on this shared infrastructure.
+## Deployment
 
-## Services
+### Prerequisites
+- Docker Engine 20.10+
+- Docker Compose 2.0+
+- Ports 80, 443 available
+- Domain DNS pointing to server IP
 
-### Caddy Reverse Proxy
-- **Container**: `shared-caddy`
-- **Ports**: 80 (HTTP), 443 (HTTPS)
-- **Network**: `niabhail-tech-network`
-- **Features**:
-  - Automatic HTTPS with Let's Encrypt
-  - HTTP/2 and gzip compression
-  - Security headers
-  - Static asset caching
-  - Request logging
+### Quick Deploy
 
-### Docker Network
-- **Name**: `niabhail-tech-network`
-- **Type**: Bridge network
-- **Purpose**: Allows application containers to communicate with Caddy
+1. **Clone repository**:
+   ```bash
+   git clone https://github.com/niabhail/niabhail-tech-shared-infra.git
+   cd niabhail-tech-shared-infra
+   ```
 
-## Quick Start
+2. **Deploy**:
+   ```bash
+   chmod +x deploy.sh
+   # Option 1: Auto-configure with domain parameter
+   ./deploy.sh your-domain.com
+   
+   # Option 2: Manual configuration
+   cp Caddyfile.template Caddyfile  # Edit and replace {{DOMAIN}}
+   ./deploy.sh
+   ```
 
-### 1. Configure Caddy
-Copy the template and customize for your environment:
-```bash
-cp Caddyfile.template Caddyfile
-```
-
-Edit `Caddyfile` and replace template variables:
-- `{{DOMAIN}}` - Your main domain (e.g., niabhail.tech)
-
-### 2. Deploy Infrastructure
-```bash
-chmod +x deploy.sh
-./deploy.sh
-```
-
-### 3. Verify Deployment
-```bash
-# Check running containers
-docker ps
-
-# Test health endpoint
-curl http://localhost:8080/health
-
-# View logs
-docker compose logs -f
-```
+3. **Verify**:
+   ```bash
+   docker ps  # Should show shared-caddy container running
+   docker network ls | grep niabhail-tech-network  # Should show the shared network
+   ```
 
 ## Configuration
-
-### Caddyfile Template Variables
-The `Caddyfile.template` uses placeholder variables that you need to replace:
-
-```caddy
-# Replace {{DOMAIN}} with your actual domain
-{{DOMAIN}} {
-    reverse_proxy niabhail-tech-site:3000
-}
-
-# Replace {{DOMAIN}}
-n8n.{{DOMAIN}} {
-    reverse_proxy n8n-app:5678
-}
-```
 
 ### Adding New Services
 To add a new service to the reverse proxy:
@@ -97,91 +67,6 @@ networks:
 docker exec shared-caddy caddy reload --config /etc/caddy/Caddyfile
 ```
 
-## Managing Subdomains
-
-### Adding a New Subdomain
-
-When you need to add a new service with its own subdomain:
-
-1. **Edit your `Caddyfile`**:
-```bash
-vim Caddyfile
-```
-
-2. **Add the new subdomain block** (copy from n8n example):
-```caddy
-api.niabhail.tech {
-    reverse_proxy api-service:8080
-    
-    encode gzip
-    
-    header {
-        # Security headers
-        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
-        X-Frame-Options "SAMEORIGIN"
-        X-Content-Type-Options "nosniff"
-        X-XSS-Protection "1; mode=block"
-        Referrer-Policy "strict-origin-when-cross-origin"
-        
-        # Remove server info
-        -Server
-    }
-    
-    # Logging
-    log {
-        output file /var/log/caddy/api.niabhail.tech.log {
-            roll_size 10MB
-            roll_keep 5
-            roll_keep_for 720h
-        }
-        format json
-        flush_interval -1
-    }
-}
-```
-
-3. **Reload Caddy configuration**:
-```bash
-docker exec shared-caddy caddy reload --config /etc/caddy/Caddyfile
-```
-
-4. **Verify the reload**:
-```bash
-# Check Caddy logs for any errors
-docker logs shared-caddy --tail 20
-
-# Test the new subdomain
-curl -I https://api.niabhail.tech
-```
-
-### Updating the Template (Optional)
-
-If you want to preserve the new subdomain pattern for future deployments:
-
-1. **Update `Caddyfile.template`** with your new subdomain as a commented example
-2. **Keep your working `Caddyfile`** - the deploy script won't overwrite it
-
-### Common Subdomain Patterns
-
-```caddy
-# API service
-api.{{DOMAIN}} {
-    reverse_proxy api-service:8080
-}
-
-# Admin interface
-admin.{{DOMAIN}} {
-    reverse_proxy admin-app:3000
-}
-
-# Database admin (restrict access)
-db.{{DOMAIN}} {
-    reverse_proxy phpmyadmin:80
-    # Add IP restrictions for security
-    @restricted not remote_ip 192.168.1.0/24
-    respond @restricted "Access denied" 403
-}
-```
 
 ## Directory Structure
 
@@ -195,17 +80,10 @@ niabhail-tech-shared-infra/
 └── README.md              # This file
 ```
 
-## Deployment Order
-
-1. **First**: Deploy shared infrastructure (this project)
-2. **Then**: Deploy application services (portfolio site, n8n, etc.)
-
-Application services will automatically connect to the `niabhail-tech-network` and be routed by Caddy.
 
 ## Monitoring
 
 ### Health Checks
-- Caddy health: `http://localhost:8080/health`
 - Container status: `docker ps`
 - Network status: `docker network ls | grep niabhail-tech-network`
 
@@ -215,13 +93,9 @@ Application services will automatically connect to the `niabhail-tech-network` a
 docker compose logs -f shared-caddy
 
 # Access logs (JSON format)
-tail -f logs/niabhail.tech.log
+tail -f logs/*.log
 ```
 
-### Admin API (Development Only)
-- **Disabled by default** for security
-- To enable: Uncomment port 2019 in `docker-compose.yml`
-- URL: `http://localhost:2019` (when enabled)
 
 ## Security
 
@@ -261,15 +135,19 @@ docker volume rm shared_caddy_data
 docker compose up -d
 ```
 
-### Support
-For issues specific to this infrastructure, check:
-1. Container logs: `docker compose logs`
-2. Network connectivity: `docker network inspect niabhail-tech-network`
-3. Caddy configuration: `docker exec shared-caddy caddy validate --config /etc/caddy/Caddyfile`
+### Debug Commands
+```bash
+# Container logs
+docker compose logs
 
-## Dependencies
+# Network connectivity  
+docker network inspect niabhail-tech-network
 
-- Docker Engine 20.10+
-- Docker Compose 2.0+
-- Ports 80, 443 available
-- Domain DNS pointing to server IP
+# Validate Caddy config
+docker exec shared-caddy caddy validate --config /etc/caddy/Caddyfile
+```
+
+## Related Projects
+
+- **[niabhail-tech-site](https://github.com/niabhail/niabhail-tech-site)** - Portfolio website
+- **[niabhail-tech-n8n](https://github.com/niabhail/niabhail-tech-n8n)** - Automation platform

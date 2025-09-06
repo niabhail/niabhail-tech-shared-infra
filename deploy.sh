@@ -112,19 +112,12 @@ else
     exit 1
 fi
 
-# Test Caddy health endpoint
-if curl -s http://localhost:8080/health > /dev/null 2>&1; then
-    print_status "✅ Caddy health check passed"
-else
-    print_warning "⚠️ Caddy health check failed (this might be normal if port 8080 is disabled)"
-fi
 
 print_step "🎉 Shared infrastructure deployment complete!"
 
 echo ""
 print_status "Infrastructure Status:"
 echo "- Caddy proxy: Running on ports 80/443"
-echo "- Health check: Available on port 8080"
 echo "- Network: niabhail-tech-network created"
 echo "- Logs: ./logs/ directory"
 
