@@ -1,0 +1,35 @@
+services:
+  shared-caddy:
+    image: caddy:2-alpine
+    container_name: shared-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      # - "2019:2019"  # Admin API (uncomment for development only)
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./logs:/var/log/caddy
+    networks:
+      - niabhail-tech-network
+    environment:
+      - CADDY_ADMIN=0.0.0.0:2019
+    healthcheck:
+      test: ["CMD", "caddy", "version"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  caddy_data:
+    name: "shared_caddy_data"
+  caddy_config:
+    name: "shared_caddy_config"
+
+networks:
+  niabhail-tech-network:
+    name: "niabhail-tech-network"
+    driver: bridge

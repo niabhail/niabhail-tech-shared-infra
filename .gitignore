@@ -1,0 +1,31 @@
+# Caddy configuration (customized from template)
+Caddyfile
+
+# Logs
+logs/
+*.log
+
+# Docker volumes (managed by Docker)
+caddy_data/
+caddy_config/
+
+# Environment files
+.env
+.env.local
+.env.production
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
